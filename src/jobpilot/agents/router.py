@@ -9,11 +9,12 @@ from pydantic import BaseModel, Field
 
 from jobpilot.llm import get_chat_model
 
-Route = Literal["job_search", "career_coach", "off_topic"]
+Route = Literal["job_search", "career_coach", "job_comparison", "off_topic"]
 
 ROUTER_PROMPT = """Classify the user's latest message for a job-search app.
 - job_search: finding jobs, job details, applying, or checking applications.
 - career_coach: resume or profile feedback, skill gaps, cover letters, interview preparation, career advice.
+- job_comparison: comparing two or more specific jobs (job ids) against each other.
 - off_topic: anything unrelated to jobs or careers.
 Use the recent conversation to understand short follow-ups like "apply to it"."""
 

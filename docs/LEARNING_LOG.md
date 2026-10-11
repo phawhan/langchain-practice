@@ -13,6 +13,9 @@ Each concept from `03_GenAI_Agents_Index.md`, where it lives in the code, and wh
 | 4.2 | ReAct pattern | `create_agent` in both agents | Reason, call a tool, observe, repeat: the default agent loop. |
 | 4.2 | Router pattern | `src/jobpilot/agents/router.py`, used in `cli.py` | One structured-output LLM call picks a specialist; code dispatches. Off-topic is answered by code at zero cost. |
 | 4.2 | Specialist agents | `agents/job_search_agent.py`, `agents/career_coach_agent.py` | Small prompt + only the needed tools = more accurate than one giant agent. |
+| 4.2 | Reflection pattern | `src/jobpilot/workflows/cover_letter.py`, tool in `tools/cover_letter_tools.py` | Write -> critique -> revise, capped rounds. Code does exact checks; an unreliable LLM critic makes output worse. |
+| 4.2 | Supervisor pattern | `src/jobpilot/agents/supervisor_agent.py` (`uv run jobpilot --mode supervisor`) | A ReAct agent whose tools are whole agents; chains workers in sequence; workers run in fresh contexts. |
+| 4.2 | Orchestrator-subagents | `src/jobpilot/agents/job_comparison_orchestrator.py` (router route `job_comparison`) | Split once -> parallel subagents (`asyncio.gather` + `Semaphore`) -> combine; partial failures tolerated. |
 | 1.6 | Structured output | `router.py` (`with_structured_output(RouteDecision)`) | A Pydantic schema forces the LLM to return valid, typed JSON. |
 | Design | Repository pattern | `src/jobpilot/repositories/` | Tools talk to an interface; JSON today, pgvector RAG later, agent unchanged. |
 | Design | One swappable LLM | `src/jobpilot/llm.py` | Ollama locally; Claude or Bedrock by editing one file. |
