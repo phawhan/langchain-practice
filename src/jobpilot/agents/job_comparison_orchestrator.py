@@ -56,7 +56,9 @@ async def compare_jobs(request: str, context: UserContext) -> str:
         return "Please mention the job ids you want to compare, e.g. JOB-1002 and JOB-1003."
 
     # 2. FAN OUT
-    subagent = build_career_coach_agent()  # one compiled agent can safely serve many parallel runs
+    # subagents read third-party job postings, so they get no memory tools (least privilege);
+    # one compiled agent can safely serve many parallel runs
+    subagent = build_career_coach_agent(include_memory_tools=False)
     limit = asyncio.Semaphore(MAX_PARALLEL_SUBAGENTS)
     results = await asyncio.gather(
         *(_run_subagent(subagent, subtask, context, limit) for subtask in plan.subtasks),

@@ -125,6 +125,9 @@ def _read_input() -> str | None:
             return None
         if user_input.lower() in {"exit", "quit"}:
             return None
+        if len(user_input) > settings.max_input_chars:  # input guardrail: no giant pastes (cost, injection surface)
+            print(f"\njobpilot> That message is too long. Please keep it under {settings.max_input_chars} characters.")
+            continue
         if user_input:
             return user_input
 

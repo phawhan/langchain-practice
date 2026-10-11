@@ -4,10 +4,14 @@ The agent's tools only talk to the JobRepository interface. Today it is backed b
 with keyword search; later it becomes pgvector + hybrid RAG without any change to the agent.
 """
 import json
+import logging
 from pathlib import Path
 from typing import Protocol
 
 from jobpilot.models import Job
+from jobpilot.security.content_scanner import scan_text
+
+logger = logging.getLogger(__name__)
 
 SEED_FILE = Path(__file__).resolve().parents[1] / "data" / "jobs.json"
 
@@ -24,7 +28,17 @@ class InMemoryJobRepository:
     """Keyword search over seed data. Placeholder until the pgvector version."""
 
     def __init__(self, seed_file: Path = SEED_FILE):
-        self._jobs = {item["job_id"]: Job(**item) for item in json.loads(seed_file.read_text())}
+        self._jobs: dict[str, Job] = {}
+        self.quarantined: dict[str, list[str]] = {}  # job_id -> rules it broke; waits for human review
+        for item in json.loads(seed_file.read_text()):
+            job = Job(**item)
+            # Ingestion scan (4.9): stop poisoned postings at the door, before any agent can read them.
+            # In production this runs when a recruiter submits a posting, not at load time.
+            if findings := scan_text(f"{job.title}\n{job.company}\n{job.description}"):
+                self.quarantined[job.job_id] = [f.rule for f in findings]
+                logger.warning("Quarantined %s: %s", job.job_id, self.quarantined[job.job_id])
+                continue
+            self._jobs[job.job_id] = job
 
     def search(
         self, keywords: str, location: str | None = None, experience_years: int | None = None, limit: int = 5

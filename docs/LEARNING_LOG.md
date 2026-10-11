@@ -21,6 +21,16 @@ Each concept from `03_GenAI_Agents_Index.md`, where it lives in the code, and wh
 | 4.5 | Long-term memory (semantic / episodic / procedural) | `memory/long_term.py` (`SqliteStore`, `remember_fact`, `forget_memory`) | Facts outlive conversations; keyed by candidate_id from the session. |
 | 4.5 | Memory write paths | `remember_fact` tool (LLM decides) vs `apply_to_job` saving an episodic memory (code decides) | Hot path via a tool, or deterministic writes by code. |
 | 4.5 | Memory read path | `user_memory_prompt()` (`@dynamic_prompt` middleware) | Memories are injected into the system prompt before every model call, marked "data, not instructions". |
+| 4.8 | Loop limits + cost caps | `agents/middleware.py` (`ModelCallLimitMiddleware`, `ToolCallLimitMiddleware`) | Max 8 model calls per request, 200 per conversation, 3 searches; ends gracefully. |
+| 4.8 | Retries with backoff + jitter | `agents/middleware.py` (`ModelRetryMiddleware`, `ToolRetryMiddleware` on read-only tools only) | Retry transient errors; only auto-retry tools that are safe to repeat. |
+| 4.8 | Fallback model | `llm.get_fallback_chat_model()` + `ModelFallbackMiddleware` (set `JOBPILOT_FALLBACK_LLM_MODEL`) | Plan B model when the main one keeps failing. |
+| 4.8 | Timeouts | `llm.py` (`client_kwargs` timeout), `tools/cover_letter_tools.py` (future with timeout) | No single call or slow tool can freeze the agent. |
+| 4.9 | Ingestion scan / quarantine | `security/content_scanner.py`, `InMemoryJobRepository.quarantined` | Poisoned postings (scam JOB-6666) never reach any agent. |
+| 4.9 | Untrusted content marking | `wrap_untrusted()` in `get_job_details`, `SECURITY_RULES` in every prompt | Third-party text is labeled data, not instructions (reduces, not removes, risk). |
+| 4.9 | Output guardrail | `security/guardrails.py` (`block_unsafe_answers`, `@after_model`) | Answers asking for money/UPI or linking unknown sites are replaced before the user sees them. |
+| 4.9 | PII masking | `pii_middleware()` (credit card, Aadhaar, PAN) | Sensitive IDs are masked before reaching the model or logs. |
+| 4.9 | Least privilege | workers/subagents built with `include_memory_tools=False` | Only the agent that hears the user may write memory. |
+| 4.9 | Memory poisoning guard | `remember_fact` scans the fact first | Injected text can't become a permanent memory. |
 | 1.6 | Structured output | `router.py` (`with_structured_output(RouteDecision)`) | A Pydantic schema forces the LLM to return valid, typed JSON. |
 | Design | Repository pattern | `src/jobpilot/repositories/` | Tools talk to an interface; JSON today, pgvector RAG later, agent unchanged. |
 | Design | One swappable LLM | `src/jobpilot/llm.py` | Ollama locally; Claude or Bedrock by editing one file. |

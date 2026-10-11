@@ -10,6 +10,7 @@ from langchain.tools import ToolRuntime, tool
 
 from jobpilot.dependencies import UserContext, get_application_repository, get_job_repository
 from jobpilot.memory.long_term import save_memory
+from jobpilot.security.guardrails import wrap_untrusted
 
 
 @tool
@@ -32,7 +33,9 @@ def get_job_details(job_id: str) -> dict:
     job = get_job_repository().get(job_id)
     if job is None:
         return {"error": f"No job with id '{job_id}'. Use search_jobs to find valid job ids."}
-    return job.model_dump(mode="json")
+    details = job.model_dump(mode="json")
+    details["description"] = wrap_untrusted(job.description, source="recruiter")  # third-party text = data
+    return details
 
 
 @tool
