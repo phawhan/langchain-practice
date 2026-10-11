@@ -1,0 +1,12 @@
+[
+  {
+    "candidate_id": "CAND-001",
+    "full_name": "Ananya Rao",
+    "headline": "Backend developer moving into GenAI",
+    "experience_years": 3,
+    "skills": ["python", "fastapi", "postgresql", "langchain", "rag", "aws lambda", "docker"],
+    "preferred_locations": ["Bengaluru", "Remote"],
+    "expected_salary_lpa": 22,
+    "resume_summary": "3 years building Python APIs with FastAPI and PostgreSQL at a fintech startup. Built an internal RAG chatbot over policy documents using LangChain. Deployed services on AWS Lambda with Docker. No production experience with LangGraph, multi-agent systems, or evaluation frameworks yet."
+  }
+]
