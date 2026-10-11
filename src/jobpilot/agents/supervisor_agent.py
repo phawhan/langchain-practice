@@ -9,6 +9,7 @@ from functools import lru_cache
 from typing import Any
 
 from langchain.agents import create_agent
+from langchain.agents.middleware import SummarizationMiddleware
 from langchain.tools import ToolRuntime, tool
 
 from jobpilot.agents.career_coach_agent import build_career_coach_agent
@@ -16,13 +17,17 @@ from jobpilot.agents.job_search_agent import build_job_search_agent
 from jobpilot.config import settings
 from jobpilot.dependencies import UserContext
 from jobpilot.llm import get_chat_model
+from jobpilot.memory.long_term import MEMORY_TOOLS, user_memory_prompt
+from jobpilot.memory.stores import get_checkpointer, get_memory_store
 
 SUPERVISOR_PROMPT = """You are JobPilot's supervisor. You never search or give advice yourself; you delegate.
 - ask_job_search_specialist: finding jobs, job details, applying, application status.
 - ask_career_coach: profile feedback, skill gaps, cover letters, interview preparation.
 If a request needs both, call them one after another and pass on what you learned
 (for example, give the career coach the job_id that the job search specialist found).
-Give each specialist a complete, self-contained task: it cannot see this conversation.
+Give each specialist a complete, self-contained task: it cannot see this conversation,
+so include relevant remembered preferences (e.g. preferred locations) in the task.
+When the user states a lasting preference or fact, save it with remember_fact.
 Finish with one short combined answer for the user."""
 
 
@@ -65,9 +70,17 @@ def ask_career_coach(task: str, runtime: ToolRuntime[UserContext, Any]) -> str:
 
 
 def build_supervisor_agent():
+    """The supervisor owns the conversation, so it carries all three kinds of memory."""
     return create_agent(
         model=get_chat_model(),
-        tools=[ask_job_search_specialist, ask_career_coach],
-        system_prompt=SUPERVISOR_PROMPT,
+        tools=[ask_job_search_specialist, ask_career_coach, *MEMORY_TOOLS],
+        middleware=[
+            # SHORT-TERM, long chats: past 30 messages, older ones become one summary; last 10 kept word for word
+            SummarizationMiddleware(model=get_chat_model(), trigger=("messages", 30), keep=("messages", 10)),
+            # LONG-TERM: this user's remembered facts are added to the system prompt on every call
+            user_memory_prompt(SUPERVISOR_PROMPT),
+        ],
         context_schema=UserContext,
+        checkpointer=get_checkpointer(),  # SHORT-TERM, persisted: the conversation is saved per thread_id
+        store=get_memory_store(),  # LONG-TERM store, shared with the workers' tools
     )

@@ -9,6 +9,7 @@ from typing import Any
 from langchain.tools import ToolRuntime, tool
 
 from jobpilot.dependencies import UserContext, get_application_repository, get_job_repository
+from jobpilot.memory.long_term import save_memory
 
 
 @tool
@@ -39,12 +40,17 @@ def apply_to_job(job_id: str, runtime: ToolRuntime[UserContext, Any]) -> dict:
     """Submit the current user's application to a job. Only call this when the user clearly asks to apply."""
     context: UserContext = runtime.context  # from the session, never from the LLM
     candidate_id = context.candidate_id
-    if get_job_repository().get(job_id) is None:
+    job = get_job_repository().get(job_id)
+    if job is None:
         return {"error": f"No job with id '{job_id}'."}
     applications = get_application_repository()
-    if existing := applications.find(candidate_id, job_id.upper()):
+    if existing := applications.find(candidate_id, job.job_id):
         return {"message": "Already applied.", **existing.model_dump(mode="json")}
-    return {"message": "Application submitted.", **applications.create(candidate_id, job_id.upper()).model_dump(mode="json")}
+    application = applications.create(candidate_id, job.job_id)
+    if runtime.store is not None:  # episodic memory written by code, not by the LLM
+        fact = f"Applied to {job.title} at {job.company} ({job.job_id}) on {application.applied_on}"
+        save_memory(runtime.store, candidate_id, fact, "episodic")
+    return {"message": "Application submitted.", **application.model_dump(mode="json")}
 
 
 @tool

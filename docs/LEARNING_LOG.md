@@ -16,6 +16,11 @@ Each concept from `03_GenAI_Agents_Index.md`, where it lives in the code, and wh
 | 4.2 | Reflection pattern | `src/jobpilot/workflows/cover_letter.py`, tool in `tools/cover_letter_tools.py` | Write -> critique -> revise, capped rounds. Code does exact checks; an unreliable LLM critic makes output worse. |
 | 4.2 | Supervisor pattern | `src/jobpilot/agents/supervisor_agent.py` (`uv run jobpilot --mode supervisor`) | A ReAct agent whose tools are whole agents; chains workers in sequence; workers run in fresh contexts. |
 | 4.2 | Orchestrator-subagents | `src/jobpilot/agents/job_comparison_orchestrator.py` (router route `job_comparison`) | Split once -> parallel subagents (`asyncio.gather` + `Semaphore`) -> combine; partial failures tolerated. |
+| 4.5 | Short-term memory, persisted | `memory/stores.py` (`SqliteSaver`), supervisor `checkpointer=`, `--thread` in `cli.py` | Checkpointer saves state per `thread_id`; send only the new message, the rest is loaded. |
+| 4.5 | Summarization | supervisor `SummarizationMiddleware(trigger=("messages", 30), keep=("messages", 10))` | Old turns become one summary; recent turns kept word for word. |
+| 4.5 | Long-term memory (semantic / episodic / procedural) | `memory/long_term.py` (`SqliteStore`, `remember_fact`, `forget_memory`) | Facts outlive conversations; keyed by candidate_id from the session. |
+| 4.5 | Memory write paths | `remember_fact` tool (LLM decides) vs `apply_to_job` saving an episodic memory (code decides) | Hot path via a tool, or deterministic writes by code. |
+| 4.5 | Memory read path | `user_memory_prompt()` (`@dynamic_prompt` middleware) | Memories are injected into the system prompt before every model call, marked "data, not instructions". |
 | 1.6 | Structured output | `router.py` (`with_structured_output(RouteDecision)`) | A Pydantic schema forces the LLM to return valid, typed JSON. |
 | Design | Repository pattern | `src/jobpilot/repositories/` | Tools talk to an interface; JSON today, pgvector RAG later, agent unchanged. |
 | Design | One swappable LLM | `src/jobpilot/llm.py` | Ollama locally; Claude or Bedrock by editing one file. |
